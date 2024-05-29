@@ -1,0 +1,4 @@
+(executable
+ (public_name SABM)
+ (name main)
+ (libraries SABM base))

@@ -1,0 +1,14 @@
+_build/default/.dune
+_build/default/bin/.main.eobjs
+_build/default/bin/.merlin-conf
+_build/default/bin/main.exe
+_build/default/lib/.SABM.objs
+_build/default/lib/.merlin-conf
+_build/install/default/bin
+_build/.db
+_build/.digest-db
+_build/.filesystem-clock
+_build/.lock
+_build/log
+_build/default
+flake.lock
