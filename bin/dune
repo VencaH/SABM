@@ -1,4 +1,4 @@
 (executable
  (public_name SABM)
  (name main)
- (libraries SABM base))
+ (libraries SABM base owl owl-plplot))

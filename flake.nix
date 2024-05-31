@@ -12,6 +12,7 @@
   #     $ nix flake lock --update-input <input> ... --commit-lockfile
   #
   inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05"; # Specify the Nixpkgs version
     # Convenience functions for writing flakes
     flake-utils.url = "github:numtide/flake-utils";
     # Precisely filter files copied to the nix store
@@ -28,6 +29,26 @@
         ocamlPackages = legacyPackages.ocamlPackages;
         # Library functions from nixpkgs
         lib = legacyPackages.lib;
+
+       # Define owl-plplot package
+        owl-plplot = ocamlPackages.buildDunePackage rec {
+          pname = "owl-plplot";
+          version = "1.0.2"; # Specify the version you need
+          src = legacyPackages.fetchurl {
+            url = "https://github.com/owlbarn/owl/releases/download/1.0.2/owl-1.0.2.tbz";
+            # sha256 = "sha256-38d210ce6c1c2f09631fd59951430e4f364b5ae036c71ed1b32ce559b2a29263"; # Fill in the correct hash
+            sha256 = lib.fakeSha256;
+          };
+          # src = legacyPackages.fetchFromGitHub {
+          #   owner = "owlbarn";
+          #   repo = "owl";
+          #   rev = "v1.0.2"; # Match the version here
+          #   # sha256 = "sha256-38d210ce6c1c2f09631fd59951430e4f364b5ae036c71ed1b32ce559b2a29263"; # Fill in the correct hash
+          #   sha256 = lib.fakeSha256;
+          # };
+          buildInputs = [ legacyPackages.plplot ];
+          duneConfigFile = "dune-project";
+        };
 
         # Filtered sources (prevents unecessary rebuilds)
         sources = {
@@ -72,6 +93,8 @@
             src = sources.ocaml;
 
             buildInputs = [
+                ocamlPackages.owl
+                owl-plplot
                 # Ocaml package dependencies needed to build go here.
             ];
 
@@ -204,6 +227,8 @@
               ocamlPackages.utop
 
               ocamlPackages.base
+              ocamlPackages.owl
+              owl-plplot
             ];
 
             # Tools from packages

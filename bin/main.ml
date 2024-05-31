@@ -1,4 +1,5 @@
 open Base
+open Owl
 
 let () = Random.self_init ()
 
@@ -23,7 +24,7 @@ let snd_dejong (parameters : float list) : float =
 let schweffel (parameters : float list) : float =
   let d = Float.of_int (List.length parameters) in
   List.fold parameters ~init:0. ~f:(fun acc x ->
-      acc +. (x *. Stdlib.sin (Stdlib.sqrt (Stdlib.abs_float x))) )
+      acc +. (x *. Float.sin (Float.sqrt (Float.abs x))) )
   |> Float.( - ) (418.9829 *. d)
 
 
@@ -125,7 +126,7 @@ let eval_local (size : int) (start : float list) (t : float) (min_t : float)
         in
         inner_eval_local (x - 1) (local_next current min max) t min_t step_t min max cf best best_cost
   in
-  inner_eval_local size start t min_t step_t min max cost_function start (999.)
+  inner_eval_local size start t min_t step_t min max cost_function start (999999.)
 
 let simulated_annealing (size : int) (local_size : int) (max_t : float)
     (min_t : float) (step_t : float) (dimensions: int) (min: float) (max: float) (cost_function: float list -> float) =
@@ -154,6 +155,23 @@ let simulated_annealing (size : int) (local_size : int) (max_t : float)
     (cost_function current)
 
 let () =
-  simulated_annealing 10000 10 1000. 0.1 0.98 5 (-5.) 5. fst_dejong
-  |> print_result "SA 1st DeJong function"
+  simulated_annealing 10000 10 1000. 0.1 0.1 5 (-5.) 5. fst_dejong
+  |> print_result "SA 1st DeJong function";
+  simulated_annealing 10000 10 1000. 0.1 0.1 5 (-5.) 5. snd_dejong
+  |> print_result "SA 2nd DeJong function";
+  simulated_annealing 10000 10 1000. 0.01 0.01 20  (-500.) 500. schweffel
+  |> print_result "SA Schwefel function";
 
+let () =
+  
+
+(*
+let () =
+  let fdj x = fun _ ->  simulated_annealing 10000 10 1000. 0.1 0.1 5 (-5.) 5. fst_dejong in
+    let out = Plot.create "plot_test.png" in
+    Plot.set_title h "test test";
+    Plot.set_xlabel "iteration";
+    Plot.set_ylabel "CF value";
+    Plot.plot_fun ~h f 1. 30.;
+    Plot.output h 
+*)
