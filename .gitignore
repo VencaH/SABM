@@ -11,3 +11,17 @@ _build/.filesystem-clock
 _build/.lock
 _build/log
 _build/default
+test.txt
+plot_test.png
+avg.txt
+SA_sdjn_5.png
+SA_sdjn_10.png
+SA_sch_5.png
+SA_sch_10.png
+SA_fdjn_5.png
+SA_fdjn_10.png
+SA_avg.png
+SA.png
+RS_avg.png
+RS.png
+Comparison.png

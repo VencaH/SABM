@@ -1,5 +1,5 @@
 open Base
-open Owl
+open Owl_plplot
 
 let () = Random.self_init ()
 
@@ -34,10 +34,10 @@ let schweffel (parameters : float list) : float =
 let random_search (size : int) (dimensions : int) (min : float) (max : float)
     (cost_function : float list -> float) =
   let rec inner_rs (n : int) (dim : int) (min : float) (max : float)
-      (cf : float list -> float) (best_cost : float) (best : float list) =
+      (cf : float list -> float) (best_cost : float) (best : float list) (result: (float*float list) list ) =
     match n with
     | 0 ->
-        (best_cost, best)
+        (result, best_cost, best)
     | n ->
         let params = random_params min max dim in
         let current_cost = cf params in
@@ -46,15 +46,20 @@ let random_search (size : int) (dimensions : int) (min : float) (max : float)
             Stdlib.print_newline();
 *)
         if Float.( < ) current_cost best_cost then
-          inner_rs (n - 1) dim min max cf current_cost params
-        else inner_rs (n - 1) dim min max cf best_cost best
+            let result = List.append result [current_cost, params] in
+          inner_rs (n - 1) dim min max cf current_cost params result
+        else 
+            let result = List.append result [best_cost, best] in
+            inner_rs (n - 1) dim min max cf best_cost best result
   in
   let start = random_params min max dimensions in
-  inner_rs (size - 1) dimensions min max cost_function (cost_function start)
-    start
+  let start_cost = cost_function start in
+  let result = [(start_cost, start)] in
+  inner_rs (size - 1) dimensions min max cost_function start_cost
+    start result
 
-let print_result (fn_name : string) (res : float * float list) =
-  let cost, params = res in
+let print_result (fn_name : string) (res : (float * float list) list * float * float list) =
+  let _,cost, params = res in
   Stdlib.print_string fn_name ;
   Stdlib.print_endline " random search result: " ;
   Stdlib.print_string "Minimum: " ;
@@ -112,66 +117,371 @@ let local_next (previous: float list) (min: float) (max: float): float list =
   
 
 let eval_local (size : int) (start : float list) (t : float) (min_t : float)
-    (step_t : float) (min: float) (max: float) (cost_function: float list -> float) : float * float * float list =
-  let rec inner_eval_local (size : int) (current : float list) (t : float)
-      (min_t : float) (step_t : float) (min: float) (max: float) (cf: float list -> float) (best : float list) (best_cost : float) :
-      float * float * float list =
+    (step_t : float) (min: float) (max: float) (cost_function: float list -> float) (result: (float * float list)  list) : (float * float list) list *float * float list =
+  let rec inner_eval_local (size : int)(t : float)
+      (min_t : float) (step_t : float) (min: float) (max: float) (cf: float list -> float) (best : float list) (best_cost : float) (result: (float * float list)  list) :
+      (float * float list)  list * float * float list =
     match size with
     | 0 ->
-        (t, best_cost, best)
+        (result,best_cost, best)
     | x ->
-        let current_cost = cf current in
+        let next_input = local_next best min max in
+        let next_cost = cf next_input in
         let best_cost, best =
-          metropolis t best best_cost current current_cost
+          metropolis t best best_cost next_input next_cost
         in
-        inner_eval_local (x - 1) (local_next current min max) t min_t step_t min max cf best best_cost
+        let result = List.append result [best_cost,best] in
+        inner_eval_local (x - 1) t min_t step_t min max cf best best_cost result
   in
-  inner_eval_local size start t min_t step_t min max cost_function start (999999.)
+  inner_eval_local size t min_t step_t min max cost_function start (cost_function start) result
 
-let simulated_annealing (size : int) (local_size : int) (max_t : float)
+let simulated_annealing (local_size : int) (max_t : float)
     (min_t : float) (step_t : float) (dimensions: int) (min: float) (max: float) (cost_function: float list -> float) =
-  let rec inner_sa (size : int) (local_size : int) (iter : int) (t : float)
-      (min_t : float) (step_t : float) (min: float) (max:float) (cf: float list -> float) (current : float list) (best : float list)
-      (best_cost : float) : float * float list =
-    match size with
-    | 0 ->
-        (best_cost, best)
-    | x ->
-        let local_size = Int.min size local_size in
-        let t, local_best_cost, current =
-          eval_local local_size current t min_t step_t min max cf
+  let rec inner_sa (local_size : int) (t : float)
+      (min_t : float) (step_t : float) (min: float) (max:float) (cf: float list -> float) (best : float list)
+      (best_cost : float) (result: (float * float list) list) :(float * float list) list * float * float list =
+    match t with
+    | t when Float.(<) t min_t ->
+        (result, best_cost, best)
+    | t ->
+        let result,best_cost, best =
+          eval_local local_size best t min_t step_t min max cf result
         in
-        let iter = iter + local_size in
-        let new_t  = Float.max (t*.step_t) min_t in
-        let local_sa =
-          inner_sa (x - local_size) local_size iter new_t min_t step_t min max cf current
-        in
-        if Float.(<) local_best_cost best_cost then local_sa current local_best_cost
-        else local_sa best best_cost
+        (*let result = List.append result [(best_cost, best)] in *)
+        let new_t  = t*.step_t in
+         inner_sa local_size new_t min_t step_t min max cf best best_cost result in
+  let start = random_params min max dimensions
   in
-  let current = random_params min max dimensions
-  in
-  inner_sa size local_size 1 max_t min_t step_t min max cost_function current current
-    (cost_function current)
-
-let () =
-  simulated_annealing 10000 10 1000. 0.1 0.1 5 (-5.) 5. fst_dejong
-  |> print_result "SA 1st DeJong function";
-  simulated_annealing 10000 10 1000. 0.1 0.1 5 (-5.) 5. snd_dejong
-  |> print_result "SA 2nd DeJong function";
-  simulated_annealing 10000 10 1000. 0.01 0.01 20  (-500.) 500. schweffel
-  |> print_result "SA Schwefel function";
-
-let () =
-  
-
+  let start_cost = cost_function start in
+  let result = [(start_cost,start)] in
+  inner_sa local_size max_t min_t step_t min max cost_function start
+    start_cost result 
 (*
 let () =
-  let fdj x = fun _ ->  simulated_annealing 10000 10 1000. 0.1 0.1 5 (-5.) 5. fst_dejong in
-    let out = Plot.create "plot_test.png" in
-    Plot.set_title h "test test";
-    Plot.set_xlabel "iteration";
-    Plot.set_ylabel "CF value";
-    Plot.plot_fun ~h f 1. 30.;
-    Plot.output h 
+  simulated_annealing 10 1000. 0.1 0.88 5 (-5.) 5. fst_dejong
+  |> print_result "SA 1st DeJong function";
+  simulated_annealing 10 1000. 0.1 0.88 5 (-5.) 5. snd_dejong
+  |> print_result "SA 2nd DeJong function";
+  simulated_annealing 10 1000. 1. 0.999079 10  (-500.) 500. schweffel
+  |> print_result "SA Schwefel function"
 *)
+
+let result fn =
+    let accumulator i acc _ =
+        let (result, _,_) = fn() in
+        let row =List.map result ~f:(fun res -> let (cost, inp) = res in List.append [cost] inp  |> List.append [Float.of_int i]) in
+        List.append acc [row] in
+    List.foldi (List.init 30 ~f:(fun _ -> 0)) ~init: [] ~f:accumulator
+
+let avg_result (result: float list list list) =
+    let reps = Float.of_int (List.length result) in
+    let len = List.length (List.hd_exn result) in
+    let accumulator acc res =
+        List.map2_exn acc res ~f:(fun a b -> a +. (List.nth_exn b 1)) in
+    let sum =List.fold result ~init:(List.init len ~f:(fun _ -> 0.)) ~f: accumulator in
+    List.map sum ~f:(fun x -> Float.(/) x reps)
+
+let rnd_fdjn_5 =
+    result (fun () -> random_search 10000 5 (-5.) 5. fst_dejong )
+let rnd_fdjn_10 =
+    result (fun () -> random_search 10000 10 (-5.) 5. fst_dejong )
+
+let rnd_sdjn_5 =
+    result (fun () -> random_search 10000 5 (-5.) 5. snd_dejong )
+let rnd_sdjn_10 =
+    result (fun () -> random_search 10000 10 (-5.) 5. snd_dejong )
+
+let rnd_sch_5 =
+    result (fun () -> random_search 10000 5 (-500.) 500. schweffel )
+let rnd_sch_10 =
+    result (fun () -> random_search 10000 10 (-500.) 500. schweffel )
+
+let sa_fdjn_5 =
+    result (fun () ->simulated_annealing 10 1000. 0.1 0.990832 5 (-5.) 5. fst_dejong) 
+let sa_fdjn_10 =
+    result (fun () ->simulated_annealing 10 1000. 0.1 0.990832 10 (-5.) 5. fst_dejong) 
+
+
+let sa_sdjn_5 =
+    result (fun () ->simulated_annealing 10 1000. 0.1 0.990832 5 (-5.) 5. snd_dejong) 
+let sa_sdjn_10 =
+    result (fun () ->simulated_annealing 10 1000. 0.1 0.990832 10 (-5.) 5. snd_dejong) 
+
+let sa_sch_5 =
+    result (fun () ->simulated_annealing 10 1000. 0.1  0.990832 5 (-500.) 500. schweffel) 
+let sa_sch_10 =
+    result (fun () ->simulated_annealing 10 1000. 0.1  0.990832 10 (-500.) 500. schweffel) 
+
+let sa_fdjn_5_avg = 
+    avg_result sa_fdjn_5
+let sa_fdjn_10_avg = 
+    avg_result sa_fdjn_10
+
+let sa_sdjn_5_avg = 
+    avg_result sa_sdjn_5
+let sa_sdjn_10_avg = 
+    avg_result sa_sdjn_10
+
+let sa_sch_5_avg = 
+    avg_result sa_sch_5
+let sa_sch_10_avg = 
+    avg_result sa_sch_10
+
+let rnd_fdjn_5_avg = 
+    avg_result rnd_fdjn_5
+let rnd_fdjn_10_avg = 
+    avg_result rnd_fdjn_10
+
+let rnd_sdjn_5_avg = 
+    avg_result rnd_sdjn_5
+let rnd_sdjn_10_avg = 
+    avg_result rnd_sdjn_10
+
+let rnd_sch_5_avg = 
+    avg_result rnd_sch_5
+let rnd_sch_10_avg = 
+    avg_result rnd_sch_10
+
+
+
+
+let () =
+    let no_iter data = Float.of_int (List.length data) -. 1. in
+    let result data x = List.nth_exn data (Int.of_float x) in
+let out = Plot.create ~m:3 ~n:2 "SA_avg.png" in
+    Plot.subplot out 0 0;
+    Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+    Plot.set_yrange out 0. 125.;
+    Plot.plot_fun ~h:out (result sa_fdjn_5_avg) 0. (no_iter sa_fdjn_5_avg);
+    Plot.subplot out 0 1;
+    Plot.set_title out "SA 1st DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 150.;
+  Plot.plot_fun ~h:out (result sa_fdjn_10_avg) 0. (no_iter sa_fdjn_10_avg);
+    Plot.subplot out 1 0;
+    Plot.set_title out "SA 2nd DeJong with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ Plot.plot_fun ~h:out (result sa_sdjn_5_avg) 0. (no_iter sa_sdjn_5_avg);
+    Plot.subplot out 1 1;
+    Plot.set_title out "SA 2nd DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ Plot.plot_fun ~h:out (result sa_sdjn_10_avg) 0. (no_iter sa_sdjn_10_avg);
+    Plot.subplot out 2 0;
+    Plot.set_title out "SA Schwafel with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 3500.;
+ Plot.plot_fun ~h:out (result sa_sch_5_avg) 0. (no_iter sa_sch_5_avg);
+    Plot.subplot out 2 1;
+    Plot.set_title out "SA Schwafel with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 5500.;
+ Plot.plot_fun ~h:out (result sa_sch_10_avg) 0. (no_iter sa_sch_10_avg);
+    Plot.output out;; 
+
+let () =
+    let result data x = List.nth_exn data (Int.of_float x) in
+let out = Plot.create ~m:3 ~n:2 "RS_avg.png" in
+    Plot.subplot out 0 0;
+    Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+    Plot.set_yrange out 0. 125.;
+    Plot.plot_fun ~h:out (result rnd_fdjn_5_avg) 0. 9999.;
+    Plot.subplot out 0 1;
+    Plot.set_title out "Random search 1st DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 150.;
+  Plot.plot_fun ~h:out (result rnd_fdjn_10_avg) 0. 9999.;
+    Plot.subplot out 1 0;
+    Plot.set_title out "Random search 2nd DeJong with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ Plot.plot_fun ~h:out (result rnd_sdjn_5_avg) 0. 9999.;
+    Plot.subplot out 1 1;
+    Plot.set_title out "Random search 2nd DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ Plot.plot_fun ~h:out (result rnd_sdjn_10_avg) 0. 9999.;
+    Plot.subplot out 2 0;
+    Plot.set_title out "Random search Schwafel with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 3500.;
+ Plot.plot_fun ~h:out (result rnd_sch_5_avg) 0. 9999.;
+    Plot.subplot out 2 1;
+    Plot.set_title out "Random search Schwafel with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 5500.;
+ Plot.plot_fun ~h:out (result rnd_sch_10_avg) 0. 9999.;
+    Plot.output out;; 
+
+let () =
+    let result data x = List.nth_exn data (Int.of_float x)  in
+let out = Plot.create ~m:3 ~n:2 "Comparison.png" in
+    Plot.subplot out 0 0;
+    Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+    Plot.set_yrange out 0. 125.;
+    Plot.plot_fun ~h:out (result rnd_fdjn_5_avg) 0. 5500.;
+    Plot.plot_fun ~h:out (result sa_fdjn_5_avg) 0. 5500.;
+    Plot.subplot out 0 1;
+    Plot.set_title out "Random search 1st DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 150.;
+  Plot.plot_fun ~h:out (result rnd_fdjn_10_avg) 0. 5500.;
+  Plot.plot_fun ~h:out (result sa_fdjn_10_avg) 0. 5500.;
+    Plot.subplot out 1 0;
+    Plot.set_title out "Random search 2nd DeJong with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ Plot.plot_fun ~h:out (result rnd_sdjn_5_avg) 0. 5500.;
+ Plot.plot_fun ~h:out (result sa_sdjn_5_avg) 0. 5500.;
+    Plot.subplot out 1 1;
+    Plot.set_title out "Random search 2nd DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ Plot.plot_fun ~h:out (result rnd_sdjn_10_avg) 0. 5500.;
+ Plot.plot_fun ~h:out (result sa_sdjn_10_avg) 0. 5500.;
+    Plot.subplot out 2 0;
+    Plot.set_title out "Random search Schwafel with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 3500.;
+ Plot.plot_fun ~h:out (result rnd_sch_5_avg) 0. 5500.;
+ Plot.plot_fun ~h:out (result sa_sch_5_avg) 0. 5500.;
+    Plot.subplot out 2 1;
+    Plot.set_title out "Random search Schwafel with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 5500.;
+ Plot.plot_fun ~h:out (result rnd_sch_10_avg) 0. 5500.;
+ Plot.plot_fun ~h:out (result sa_sch_10_avg) 0. 5500.;
+    Plot.output out;; 
+
+
+
+let print_result (res: float list list list) = 
+    let print_line o (l: float list) = 
+        List.iter l ~f:(fun x -> Stdlib.Printf.fprintf o "%f;" x) in
+    let out_file = Stdlib.open_out "test.txt" in
+    List.iter res ~f:(fun res -> List.iter res ~f:(fun l -> print_line out_file l; Stdlib.Printf.fprintf out_file "\n"));
+    Stdlib.close_out out_file
+let () =
+    print_result rnd_sdjn_10
+
+let print_avg (res: float list) = 
+    let out_file = Stdlib.open_out "avg.txt" in
+    List.iter res ~f:(fun res -> Stdlib.Printf.fprintf out_file "%f;\n" res)
+let () =
+    print_avg sa_fdjn_5_avg
+
+
+let () =
+  let no_iter data = Float.of_int (List.length (List.hd_exn data))  -. 1. in
+  let result i data x =
+      let index = Int.of_float i in
+      let index_2 = Int.of_float x  in
+      let res = List.nth_exn data index in
+      List.nth_exn (List.nth_exn res index_2) 1 in
+let out = Plot.create ~m:3 ~n:2 "SA.png" in
+    Plot.subplot out 0 0;
+    Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+    Plot.set_yrange out 0. 125.;
+    List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_fdjn_5) 0. (no_iter sa_fdjn_5) ); 
+    Plot.subplot out 0 1;
+    Plot.set_title out "SA 1st DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 150.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_fdjn_10) 0. (no_iter sa_fdjn_10) ) ;
+    Plot.subplot out 1 0;
+    Plot.set_title out "SA 2nd DeJong with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_sdjn_5) 0. (no_iter sa_sdjn_5) ) ;
+    Plot.subplot out 1 1;
+    Plot.set_title out "SA 2nd DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_sdjn_10) 0. (no_iter sa_sdjn_10) ) ;
+    Plot.subplot out 2 0;
+    Plot.set_title out "SA Schwafel with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 3500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_sch_5) 0. (no_iter sa_sch_5) ) ;
+    Plot.subplot out 2 1;
+    Plot.set_title out "SA Schwafel with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 5500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_sch_10) 0. (no_iter sa_sch_10) ) ;
+    Plot.output out;; 
+
+let () =
+  let result i data x =
+      let index = Int.of_float i in
+      let index_2 = Int.of_float x in
+      let res = List.nth_exn data index in
+      List.nth_exn (List.nth_exn res index_2) 1 in
+let out = Plot.create ~m:3 ~n:2 "RS.png" in
+    Plot.subplot out 0 0;
+    Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 125.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_fdjn_5) 0. 9999. ); 
+    Plot.subplot out 0 1;
+    Plot.set_title out "Random search 1st DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 150.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_fdjn_10) 0. 9999. ) ;
+    Plot.subplot out 1 0;
+    Plot.set_title out "Random search 2nd DeJong with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_sdjn_5) 0. 9999. ) ;
+    Plot.subplot out 1 1;
+    Plot.set_title out "Random search 2nd DeJong with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 2500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_sdjn_10) 0. 9999. ) ;
+    Plot.subplot out 2 0;
+    Plot.set_title out "Random search Schwafel with 5 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 3500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_sch_5) 0. 9999. ) ;
+    Plot.subplot out 2 1;
+    Plot.set_title out "Random search Schwafel with 10 dimensions ";
+    Plot.set_xlabel out "iteration";
+    Plot.set_ylabel out "CF value";
+        Plot.set_yrange out 0. 5500.;
+ List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_sch_10) 0. 9999. ) ;
+    Plot.output out;;
+
+
