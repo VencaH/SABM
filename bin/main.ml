@@ -7,7 +7,8 @@ module type TestSettings = sig
     val test_name: string
     val max_temp: float
     val min_temp: float
-    val step: float
+    val step: float option
+    val iterations: int option
 end
 
 module type TestModule = sig 
@@ -20,10 +21,17 @@ module type TestModule = sig
 end
 
 module CreateTests (Inputs:TestSettings): TestModule = struct
+let iteration = match Inputs.iterations with
+        | Some(x) -> x
+        | None -> 1000
 let test_name = Inputs.test_name
 let max_temp = Inputs.max_temp
 let min_temp = Inputs.min_temp
-let step = Inputs.step
+let step =  
+    let get_step() = (min_temp /. max_temp) /. (1. /. (Float.of_int iteration)) in
+        match Inputs.step with
+        | Some(x) -> x
+        | None -> get_step()
     
 let fst_dejong (parameters : float list) : float =
   List.fold parameters ~init:0. ~f:(fun acc x -> acc +. (x **. 2.))
@@ -296,7 +304,8 @@ let print_stats_rnd header =
 
 
 let print_stats ()=
-    print_stats_sa "Statistic values for Simulated Annealing";
+    "Statistic values for Simulated Annealing for " ^ test_name
+    |> print_stats_sa ;
     Stdlib.print_newline();
     print_stats_rnd "Statistic values for Random Search"
     
@@ -557,31 +566,47 @@ let out = Plot.create ~m:3 ~n:2 out_file in
 end
 
 module TestSet1: TestSettings = struct
+let iterations = None
 let test_name = "Test1"
 let max_temp = 1000.
-let min_temp = 0.1
-let step = 0.990832
+let min_temp = 1.
+let step = Some 0.993115
 end
 
 module TestSet2: TestSettings = struct
-let test_name = "Test1"
+let iterations = None
+let test_name = "Test2"
 let max_temp = 1000.
 let min_temp = 0.1
-let step = 0.98
+let step = Some 0.98
 end
 
 module TestSet3: TestSettings = struct
+let iterations = None
 let test_name = "Test3"
 let max_temp = 1000.
 let min_temp = 1.
-let step = 0.99702
+let step = Some 0.993115
+end
+
+module TestSet4: TestSettings = struct
+let iterations = None
+let test_name = "Test4"
+let max_temp = 1000.
+let min_temp = 1.
+let step = Some 0.993115
+end
+
+module TestSet5: TestSettings = struct
+let iterations = None
+let test_name = "Test5"
+let max_temp = 1000.
+let min_temp = 1.
+let step = Some 0.993115
 end
 
 
 module Test1 = CreateTests (TestSet1)
-module Test2 = CreateTests (TestSet2)
-module Test3 = CreateTests (TestSet3)
-
 let () = 
     let open Test1 in
     print_stats();
@@ -591,6 +616,7 @@ let () =
     print_rs();
     print_comparison()
 
+module Test2 = CreateTests (TestSet2)
 let () = 
     let open Test2 in
     print_stats();
@@ -600,8 +626,29 @@ let () =
     print_rs();
     print_comparison()
 
+module Test3 = CreateTests (TestSet3)
 let () = 
     let open Test3 in
+    print_stats();
+    print_rs_avg();
+    print_sa_avg();
+    print_sa();
+    print_rs();
+    print_comparison()
+
+module Test4 = CreateTests (TestSet4)
+let () = 
+    let open Test4 in
+    print_stats();
+    print_rs_avg();
+    print_sa_avg();
+    print_sa();
+    print_rs();
+    print_comparison()
+
+module Test5 = CreateTests (TestSet5)
+let () = 
+    let open Test5 in
     print_stats();
     print_rs_avg();
     print_sa_avg();
