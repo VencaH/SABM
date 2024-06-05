@@ -27,12 +27,10 @@ let iteration = match Inputs.iterations with
 let test_name = Inputs.test_name
 let max_temp = Inputs.max_temp
 let min_temp = Inputs.min_temp
-let step =  
-    let get_step() = (min_temp /. max_temp) /. (1. /. (Float.of_int iteration)) in
-        match Inputs.step with
-        | Some(x) -> x
-        | None -> get_step()
-    
+let step =  match Inputs.step with
+    | Some(x) -> x
+    | None -> (min_temp /. max_temp) **. (1. /. (Float.of_int iteration))    
+
 let fst_dejong (parameters : float list) : float =
   List.fold parameters ~init:0. ~f:(fun acc x -> acc +. (x **. 2.))
 
@@ -254,14 +252,6 @@ let finals = List.map data ~f:(
     |> Array.of_list in
 [Owl_stats.mean finals; Owl_stats.median finals; Owl_stats.std finals; Owl_stats.max finals; Owl_stats.min finals]
 
-let print_line fn_name dim data = 
-        Stdlib.Printf.printf
-                         "|  %20s |  %2i |  %7.2f |  %7.2f |   %7.2f | %7.2f | %7.2f |" fn_name dim (List.nth_exn data 0) (List.nth_exn data 1) (List.nth_exn data 2) (List.nth_exn data 3) (List.nth_exn data 4);
-        Stdlib.print_newline()
-
-   
-
-
 let stats_sa_fdjn_5 = stats sa_fdjn_5
 let stats_sa_fdjn_10 = stats sa_fdjn_10
 
@@ -279,6 +269,11 @@ let stats_rnd_sdjn_10 = stats rnd_sdjn_10
 
 let stats_rnd_sch_5 = stats rnd_sch_5
 let stats_rnd_sch_10 = stats rnd_sch_10
+
+let print_line fn_name dim data = 
+        Stdlib.Printf.printf
+                         "|  %20s |  %2i |  %7.2f |  %7.2f |   %7.2f | %7.2f | %7.2f |" fn_name dim (List.nth_exn data 0) (List.nth_exn data 1) (List.nth_exn data 2) (List.nth_exn data 3) (List.nth_exn data 4);
+        Stdlib.print_newline()
 
 let print_stats_sa header =
         Stdlib.print_endline header;
@@ -304,10 +299,11 @@ let print_stats_rnd header =
 
 
 let print_stats ()=
-    "Statistic values for Simulated Annealing for " ^ test_name
+    Stdlib.Printf.sprintf "Statistic values for Simulated Annealing for %s max_temp: %.2f min_temp: %.4f step: %f"  test_name  max_temp  min_temp step
     |> print_stats_sa ;
     Stdlib.print_newline();
-    print_stats_rnd "Statistic values for Random Search"
+    print_stats_rnd "Statistic values for Random Search";
+    Stdlib.print_newline()
     
  
 let print_sa_avg ()=
@@ -319,7 +315,7 @@ let out = Plot.create ~m:3 ~n:2 filename in
     Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-    Plot.set_yrange out 0. 125.;
+    Plot.set_yrange out 0. 60.;
     Plot.plot_fun ~h:out (result sa_fdjn_5_avg) 0. (no_iter sa_fdjn_5_avg);
     Plot.subplot out 0 1;
     Plot.set_title out "SA 1st DeJong with 10 dimensions ";
@@ -337,7 +333,7 @@ let out = Plot.create ~m:3 ~n:2 filename in
     Plot.set_title out "SA 2nd DeJong with 10 dimensions ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-        Plot.set_yrange out 0. 2500.;
+        Plot.set_yrange out 0. 5000.;
  Plot.plot_fun ~h:out (result sa_sdjn_10_avg) 0. (no_iter sa_sdjn_10_avg);
     Plot.subplot out 2 0;
     Plot.set_title out "SA Schwafel with 5 dimensions ";
@@ -361,7 +357,7 @@ let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-    Plot.set_yrange out 0. 125.;
+    Plot.set_yrange out 0. 60.;
     Plot.plot_fun ~h:out (result rnd_fdjn_5_avg) 0. 9999.;
     Plot.subplot out 0 1;
     Plot.set_title out "Random search 1st DeJong with 10 dimensions ";
@@ -379,7 +375,7 @@ let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.set_title out "Random search 2nd DeJong with 10 dimensions ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-        Plot.set_yrange out 0. 2500.;
+        Plot.set_yrange out 0. 10000.;
  Plot.plot_fun ~h:out (result rnd_sdjn_10_avg) 0. 9999.;
     Plot.subplot out 2 0;
     Plot.set_title out "Random search Schwafel with 5 dimensions ";
@@ -407,54 +403,60 @@ let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.set_title out "Comparison RS vs SA 1st DeJong function, d = 5";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-    Plot.set_yrange out 0. 125.;
+    Plot.set_yrange out 0. 60.;
     let fdjn_5_i = no_iter rnd_fdjn_5_avg sa_fdjn_5_avg in
-    Plot.plot_fun ~h:out (result rnd_fdjn_5_avg) 0. fdjn_5_i;
-    Plot.plot_fun ~h:out (result sa_fdjn_5_avg) 0. fdjn_5_i;
+    Plot.plot_fun ~h:out ~spec:[RGB (0,255,0)] (result rnd_fdjn_5_avg) 0. fdjn_5_i;
+    Plot.plot_fun ~h:out ~spec:[RGB (0,0,255)] (result sa_fdjn_5_avg) 0. fdjn_5_i;
+    Plot.legend_on out [|"Random Search";"Simulated Annealing"|];
     Plot.subplot out 0 1;
     Plot.set_title out "Comparison RS vs SA 1st DeJong function, d = 10";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 150.;
   let fdjn_10_i = no_iter rnd_fdjn_10_avg sa_fdjn_10_avg in
-  Plot.plot_fun ~h:out (result rnd_fdjn_10_avg) 0. fdjn_10_i;
-  Plot.plot_fun ~h:out (result sa_fdjn_10_avg) 0. fdjn_10_i;
+  Plot.plot_fun ~h:out ~spec:[RGB (0,255,0)] (result rnd_fdjn_10_avg) 0. fdjn_10_i;
+  Plot.plot_fun ~h:out ~spec:[RGB (0,0,255)] (result sa_fdjn_10_avg) 0. fdjn_10_i;
+    Plot.legend_on out [|"Random Search";"Simulated Annealing"|];
     Plot.subplot out 1 0;
     Plot.set_title out "Comparison RS vs SA 2nd DeJong function,  d = 5";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 2500.;
  let sdjn_5_i = no_iter rnd_sdjn_5_avg sa_sdjn_5_avg in
- Plot.plot_fun ~h:out (result rnd_sdjn_5_avg) 0. sdjn_5_i;
- Plot.plot_fun ~h:out (result sa_sdjn_5_avg) 0. sdjn_5_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,255,0)] (result rnd_sdjn_5_avg) 0. sdjn_5_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,0,255)] (result sa_sdjn_5_avg) 0. sdjn_5_i;
+    Plot.legend_on out [|"Random Search";"Simulated Annealing"|];
     Plot.subplot out 1 1;
     Plot.set_title out "Comparison RS vs SA 2nd DeJong function, d = 10";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-        Plot.set_yrange out 0. 2500.;
+        Plot.set_yrange out 0. 5000.;
 let sdjn_10_i = no_iter rnd_sdjn_10_avg sa_fdjn_10_avg in
- Plot.plot_fun ~h:out (result rnd_sdjn_10_avg) 0. sdjn_10_i;
- Plot.plot_fun ~h:out (result sa_sdjn_10_avg) 0. sdjn_10_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,255,0)] (result rnd_sdjn_10_avg) 0. sdjn_10_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,0,255)] (result sa_sdjn_10_avg) 0. sdjn_10_i;
+    Plot.legend_on out [|"Random Search";"Simulated Annealing"|];
     Plot.subplot out 2 0;
     Plot.set_title out "Comparison RS vs SA Schwafel function, d = 5";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 3500.;
  let sch_5_i = no_iter rnd_sch_5_avg sa_sch_5_avg in
- Plot.plot_fun ~h:out (result rnd_sch_5_avg) 0. sch_5_i;
- Plot.plot_fun ~h:out (result sa_sch_5_avg) 0. sch_5_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,255,0)] (result rnd_sch_5_avg) 0. sch_5_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,0,255)] (result sa_sch_5_avg) 0. sch_5_i;
+    Plot.legend_on out [|"Random Search";"Simulated Annealing"|];
     Plot.subplot out 2 1;
     Plot.set_title out "Comparison RS vs SA Schwafel function, d = 10";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 5500.;
  let sch_10_i = no_iter rnd_sch_10_avg sa_sch_10_avg in
- Plot.plot_fun ~h:out (result rnd_sch_10_avg) 0. sch_10_i;
- Plot.plot_fun ~h:out (result sa_sch_10_avg) 0. sch_10_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,255,0)] (result rnd_sch_10_avg) 0. sch_10_i;
+ Plot.plot_fun ~h:out ~spec:[RGB (0,0,255)] (result sa_sch_10_avg) 0. sch_10_i;
+    Plot.legend_on out [|"Random Search";"Simulated Annealing"|];
     Plot.output out;; 
 
 
-
+(*
 let print_result (res: float list list list) = 
     let print_line o (l: float list) = 
         List.iter l ~f:(fun x -> Stdlib.Printf.fprintf o "%f;" x) in
@@ -469,7 +471,7 @@ let print_avg (res: float list) =
     List.iter res ~f:(fun res -> Stdlib.Printf.fprintf out_file "%f;\n" res)
 let () =
     print_avg sa_fdjn_5_avg
-
+*)
 
 let print_sa () =
   let no_iter data = Float.of_int (List.length (List.hd_exn data))  -. 1. in
@@ -484,7 +486,7 @@ let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-    Plot.set_yrange out 0. 125.;
+    Plot.set_yrange out 0. 160.;
     List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_fdjn_5) 0. (no_iter sa_fdjn_5) ); 
     Plot.subplot out 0 1;
     Plot.set_title out "SA 1st DeJong with 10 dimensions ";
@@ -502,7 +504,7 @@ let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.set_title out "SA 2nd DeJong with 10 dimensions ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-        Plot.set_yrange out 0. 2500.;
+        Plot.set_yrange out 0. 5000.;
  List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x sa_sdjn_10) 0. (no_iter sa_sdjn_10) ) ;
     Plot.subplot out 2 0;
     Plot.set_title out "SA Schwafel with 5 dimensions ";
@@ -530,7 +532,7 @@ let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
-        Plot.set_yrange out 0. 125.;
+        Plot.set_yrange out 0. 60.;
  List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_fdjn_5) 0. 9999. ); 
     Plot.subplot out 0 1;
     Plot.set_title out "Random search 1st DeJong with 10 dimensions ";
@@ -568,9 +570,9 @@ end
 module TestSet1: TestSettings = struct
 let iterations = None
 let test_name = "Test1"
-let max_temp = 1000.
-let min_temp = 1.
-let step = Some 0.993115
+let max_temp = 10000.
+let min_temp = 0.1
+let step = None
 end
 
 module TestSet2: TestSettings = struct
@@ -584,25 +586,25 @@ end
 module TestSet3: TestSettings = struct
 let iterations = None
 let test_name = "Test3"
-let max_temp = 1000.
-let min_temp = 1.
-let step = Some 0.993115
+let max_temp = 10000.
+let min_temp = 0.1
+let step = None
 end
 
 module TestSet4: TestSettings = struct
 let iterations = None
 let test_name = "Test4"
-let max_temp = 1000.
-let min_temp = 1.
-let step = Some 0.993115
+let max_temp = 10000.
+let min_temp = 0.1
+let step = None
 end
 
 module TestSet5: TestSettings = struct
 let iterations = None
 let test_name = "Test5"
-let max_temp = 1000.
-let min_temp = 1.
-let step = Some 0.993115
+let max_temp = 10000.
+let min_temp = 0.1
+let step = None
 end
 
 
