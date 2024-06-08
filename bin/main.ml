@@ -49,7 +49,7 @@ let snd_dejong (parameters : float list) : float =
   in
   inner_snd_dejong 0 parameters 0.
 
-let schweffel (parameters : float list) : float =
+let schwefel (parameters : float list) : float =
   let d = Float.of_int (List.length parameters) in
   List.fold parameters ~init:0. ~f:(fun acc x ->
       acc +. (x *. Float.sin (Float.sqrt (Float.abs x))) )
@@ -90,7 +90,7 @@ let random_search (size : int) (dimensions : int) (min : float) (max : float)
 
 (* Metropolis  *)
 
-let euler : float = 2.71828
+let euler : float = 2.71828182846
 
 let metropolis (t : float) (best : float list)
     (best_cost : float) (current : float list) (current_cost : float) :
@@ -193,9 +193,9 @@ let rnd_sdjn_10 =
     result (fun () -> random_search 10000 10 (-5.) 5. snd_dejong )
 
 let rnd_sch_5 =
-    result (fun () -> random_search 10000 5 (-500.) 500. schweffel )
+    result (fun () -> random_search 10000 5 (-500.) 500. schwefel )
 let rnd_sch_10 =
-    result (fun () -> random_search 10000 10 (-500.) 500. schweffel )
+    result (fun () -> random_search 10000 10 (-500.) 500. schwefel )
 
 let sa_fdjn_5 =
     result (fun () ->simulated_annealing 10 max_temp min_temp step 5 (-5.) 5. fst_dejong) 
@@ -208,9 +208,9 @@ let sa_sdjn_10 =
     result (fun () ->simulated_annealing 10 max_temp min_temp step 10 (-5.) 5. snd_dejong) 
 
 let sa_sch_5 =
-    result (fun () ->simulated_annealing 10 max_temp min_temp step 5 (-500.) 500. schweffel) 
+    result (fun () ->simulated_annealing 10 max_temp min_temp step 5 (-500.) 500. schwefel) 
 let sa_sch_10 =
-    result (fun () ->simulated_annealing 10 max_temp min_temp step 10 (-500.) 500. schweffel) 
+    result (fun () ->simulated_annealing 10 max_temp min_temp step 10 (-500.) 500. schwefel) 
 
 let sa_fdjn_5_avg = 
     avg_result sa_fdjn_5
@@ -529,25 +529,25 @@ let print_rs () =
       let out_file = test_name ^ "/RS.png" in
 let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.subplot out 0 0;
-    Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
+    Plot.set_title out "Random search 1st DeJong function with 5 dim. ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 60.;
  List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_fdjn_5) 0. 9999. ); 
     Plot.subplot out 0 1;
-    Plot.set_title out "Random search 1st DeJong with 10 dimensions ";
+    Plot.set_title out "Random search 1st DeJong with 10 dim. ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 150.;
  List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_fdjn_10) 0. 9999. ) ;
     Plot.subplot out 1 0;
-    Plot.set_title out "Random search 2nd DeJong with 5 dimensions ";
+    Plot.set_title out "Random search 2nd DeJong with 5 dim. ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 2500.;
  List.iter (List.init 30 ~f:(fun x -> Float.of_int x)) ~f:(fun x ->Plot.plot_fun ~h:out ~spec: [RGB (Random.int 255, Random.int 255, Random.int 255)](result x rnd_sdjn_5) 0. 9999. ) ;
     Plot.subplot out 1 1;
-    Plot.set_title out "Random search 2nd DeJong with 10 dimensions ";
+    Plot.set_title out "Random search 2nd DeJong with 10 dim. ";
     Plot.set_xlabel out "iteration";
     Plot.set_ylabel out "CF value";
         Plot.set_yrange out 0. 10000.;
@@ -569,45 +569,53 @@ end
 
 module TestSet1: TestSettings = struct
 let iterations = None
-let test_name = "Test1"
-let max_temp = 10000.
-let min_temp = 0.1
-let step = None
-end
-
-module TestSet2: TestSettings = struct
-let iterations = None
-let test_name = "Test2"
+let test_name = "Base"
 let max_temp = 1000.
 let min_temp = 0.1
 let step = Some 0.98
 end
 
-module TestSet3: TestSettings = struct
+module TestSet2: TestSettings = struct
 let iterations = None
-let test_name = "Test3"
+let test_name = "Best"
 let max_temp = 10000.
 let min_temp = 0.1
 let step = None
 end
 
+module TestSet3: TestSettings = struct
+let iterations = None
+let test_name = "99_step"
+let max_temp = 10000.
+let min_temp = 0.1
+let step = Some 0.99
+end
+
 module TestSet4: TestSettings = struct
 let iterations = None
-let test_name = "Test4"
-let max_temp = 10000.
+let test_name = "1000_start"
+let max_temp = 1000.
 let min_temp = 0.1
 let step = None
 end
 
 module TestSet5: TestSettings = struct
 let iterations = None
-let test_name = "Test5"
+let test_name = "0.01_stop"
 let max_temp = 10000.
-let min_temp = 0.1
+let min_temp = 0.01
 let step = None
 end
 
+module TestSet6: TestSettings = struct
+let iterations = None
+let test_name = "1000_0.01"
+let max_temp = 1000.
+let min_temp = 0.01
+let step = None
+end
 
+(*
 module Test1 = CreateTests (TestSet1)
 let () = 
     let open Test1 in
@@ -651,6 +659,17 @@ let () =
 module Test5 = CreateTests (TestSet5)
 let () = 
     let open Test5 in
+    print_stats();
+    print_rs_avg();
+    print_sa_avg();
+    print_sa();
+    print_rs();
+    print_comparison()
+*)
+
+module Test6 = CreateTests (TestSet6)
+let () = 
+    let open Test6 in
     print_stats();
     print_rs_avg();
     print_sa_avg();
