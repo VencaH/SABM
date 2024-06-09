@@ -1,56 +1,71 @@
 {
   description = "A flake demonstrating how to build OCaml projects with Dune";
 
-  # Flake dependency specification
-  #
-  # To update all flake inputs:
-  #
-  #     $ nix flake update --commit-lockfile
-  #
-  # To update individual flake inputs:
-  #
-  #     $ nix flake lock --update-input <input> ... --commit-lockfile
-  #
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05"; # Specify the Nixpkgs version
-    # Convenience functions for writing flakes
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     flake-utils.url = "github:numtide/flake-utils";
-    # Precisely filter files copied to the nix store
     nix-filter.url = "github:numtide/nix-filter";
   };
 
   outputs = { self, nixpkgs, flake-utils, nix-filter }:
-    # Construct an output set that supports a number of default systems
     flake-utils.lib.eachDefaultSystem (system:
       let
-        # Legacy packages that have not been converted to flakes
-        legacyPackages = nixpkgs.legacyPackages.${system};
-        # OCaml packages available on nixpkgs
-        ocamlPackages = legacyPackages.ocamlPackages;
-        # Library functions from nixpkgs
-        lib = legacyPackages.lib;
+        pkgs = import nixpkgs { inherit system; };
 
-       # Define owl-plplot package
-        owl-plplot = ocamlPackages.buildDunePackage rec {
-          pname = "owl-plplot";
-          version = "1.0.2"; # Specify the version you need
+        legacyPackages = nixpkgs.legacyPackages.${system};
+        ocamlPackages = legacyPackages.ocamlPackages;
+        lib = pkgs.lib;
+
+        cplplot = pkgs.callPackage ./Dependencies/nix-pkgs/plplot/default.nix {};
+
+        # Define plplot package
+        plplot = ocamlPackages.buildDunePackage rec {
+          pname = "plplot";
+          version = "5.12.0";
           src = legacyPackages.fetchurl {
-            url = "https://github.com/owlbarn/owl/releases/download/1.0.2/owl-1.0.2.tbz";
-            # sha256 = "sha256-38d210ce6c1c2f09631fd59951430e4f364b5ae036c71ed1b32ce559b2a29263"; # Fill in the correct hash
-            sha256 = lib.fakeSha256;
+            url = "https://github.com/hcarty/ocaml-plplot/releases/download/5.12.0/plplot-5.12.0.tbz";
+            sha256 = "fHhsMWJXvy+HBzxEff26xZhOZULzepYmiutFSBUrzCw=";
           };
-          # src = legacyPackages.fetchFromGitHub {
-          #   owner = "owlbarn";
-          #   repo = "owl";
-          #   rev = "v1.0.2"; # Match the version here
-          #   # sha256 = "sha256-38d210ce6c1c2f09631fd59951430e4f364b5ae036c71ed1b32ce559b2a29263"; # Fill in the correct hash
-          #   sha256 = lib.fakeSha256;
-          # };
-          buildInputs = [ legacyPackages.plplot ];
+          buildInputs = [ cplplot ocamlPackages.findlib ocamlPackages.dune-configurator ];
+          nativeBuildInputs = [ pkgs.pkg-config  ];
+
+          preConfigure = ''
+            if [ -d ./configure ]; then
+              echo "Configure directory exists, moving it aside."
+              mv ./configure ./_configure
+            fi
+            # export PKG_CONFIG_PATH="${legacyPackages.plplot}/lib/pkgconfig"
+            # export C_INCLUDE_PATH="${legacyPackages.plplot}/include"
+            # export LIBRARY_PATH="${legacyPackages.plplot}/lib"
+            # export LD_LIBRARY_PATH="${legacyPackages.plplot}/lib"
+            # echo $PKG_CONFIG_PATH
+          '';
+
+          preBuild = ''
+            if [ -d ./_configure ]; then
+              echo "Returning back Configure directory."
+              mv ./_configure ./configure
+            # ls "${legacyPackages.plplot}/lib/pkgconfig"
+            # ls "${legacyPackages.plplot}/include"
+            # ls "${legacyPackages.plplot}/lib"
+            fi
+          '';
           duneConfigFile = "dune-project";
         };
 
-        # Filtered sources (prevents unecessary rebuilds)
+        # Define owl-plplot package
+        owl-plplot = ocamlPackages.buildDunePackage rec {
+          pname = "owl-plplot";
+          version = "1.0.2";
+          src = legacyPackages.fetchurl {
+            url = "https://github.com/owlbarn/owl/releases/download/1.0.2/owl-1.0.2.tbz";
+            sha256 = "ONIQzmwcLwljH9WZUUMOTzZLWuA2xx7RsyzlWbKikmM=";
+          };
+          buildInputs = [ ocamlPackages.findlib  ocamlPackages.owl plplot ];
+          nativeBuildInputs = [ pkgs.pkg-config  ];
+          duneConfigFile = "dune-project";
+        };
+
         sources = {
           ocaml = nix-filter.lib {
             root = ./.;
@@ -72,18 +87,7 @@
         };
       in
       {
-        # Exposed packages that can be built or run with `nix build` or
-        # `nix run` respectively:
-        #
-        #     $ nix build .#<name>
-        #     $ nix run .#<name> -- <args?>
-        #
         packages = {
-          # The package that will be built or run by default. For example:
-          #
-          #     $ nix build
-          #     $ nix run -- <args?>
-          #
           default = self.packages.${system}.hello;
 
           hello = ocamlPackages.buildDunePackage {
@@ -93,9 +97,7 @@
             src = sources.ocaml;
 
             buildInputs = [
-                ocamlPackages.owl
-                owl-plplot
-                # Ocaml package dependencies needed to build go here.
+              ocamlPackages.owl
             ];
 
             strictDeps = true;
@@ -106,27 +108,9 @@
           };
         };
 
-        # Flake checks
-        #
-        #     $ nix flake check
-        #
         checks = {
-          # Run tests for the `hello` package
           hello =
             let
-              # Patches calls to dune commands to produce log-friendly output
-              # when using `nix ... --print-build-log`. Ideally there would be
-              # support for one or more of the following:
-              #
-              # In Dune:
-              #
-              # - have workspace-specific dune configuration files
-              #
-              # In NixPkgs:
-              #
-              # - allow dune flags to be set in in `ocamlPackages.buildDunePackage`
-              # - alter `ocamlPackages.buildDunePackage` to use `--display=short`
-              # - alter `ocamlPackages.buildDunePackage` to allow `--config-file=FILE` to be set
               patchDuneCommand =
                 let
                   subcmds = [ "build" "test" "runtest" "install" ];
@@ -142,11 +126,9 @@
                 doCheck = true;
                 buildPhase = patchDuneCommand oldAttrs.buildPhase;
                 checkPhase = patchDuneCommand oldAttrs.checkPhase;
-                # skip installation (this will be tested in the `hello-app` check)
                 installPhase = "touch $out";
               });
 
-          # Check Dune and OCaml formatting
           dune-fmt = legacyPackages.runCommand "check-dune-fmt"
             {
               nativeBuildInputs = [
@@ -166,7 +148,6 @@
               touch $out
             '';
 
-          # Check documentation generation
           dune-doc = legacyPackages.runCommand "check-dune-doc"
             {
               ODOC_WARN_ERROR = "true";
@@ -174,6 +155,7 @@
                 ocamlPackages.dune_3
                 ocamlPackages.ocaml
                 ocamlPackages.odoc
+                ocamlPackages.findlib
               ];
             }
             ''
@@ -187,7 +169,6 @@
               touch $out
             '';
 
-          # Check Nix formatting
           nixpkgs-fmt = legacyPackages.runCommand "check-nixpkgs-fmt"
             { nativeBuildInputs = [ legacyPackages.nixpkgs-fmt ]; }
             ''
@@ -197,41 +178,22 @@
             '';
         };
 
-        # Development shells
-        #
-        #    $ nix develop .#<name>
-        #    $ nix develop .#<name> --command dune build @test
-        #
-        # [Direnv](https://direnv.net/) is recommended for automatically loading
-        # development environments in your shell. For example:
-        #
-        #    $ echo "use flake" > .envrc && direnv allow
-        #    $ dune build @test
-        #
         devShells = {
           default = legacyPackages.mkShell {
-            # Development tools
             packages = [
-              # Source file formatting
               legacyPackages.nixpkgs-fmt
               legacyPackages.ocamlformat
-              # For `dune build --watch ...`
               legacyPackages.fswatch
-              # For `dune build @doc`
               ocamlPackages.odoc
-              # OCaml editor support
               ocamlPackages.ocaml-lsp
-              # Nicely formatted types on hover
               ocamlPackages.ocamlformat-rpc-lib
-              # Fancy REPL thing
               ocamlPackages.utop
-
               ocamlPackages.base
               ocamlPackages.owl
               owl-plplot
+              plplot
             ];
 
-            # Tools from packages
             inputsFrom = [
               self.packages.${system}.hello
             ];
@@ -239,3 +201,4 @@
         };
       });
 }
+

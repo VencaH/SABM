@@ -2,6 +2,7 @@ open Base
 open Owl_plplot
 
 let () = Random.self_init ()
+let graph_ftype = "png"
 
 module type TestSettings = sig
     val test_name: string
@@ -309,7 +310,7 @@ let print_stats ()=
 let print_sa_avg ()=
     let no_iter data = Float.of_int (List.length data) -. 1. in
     let result data x = List.nth_exn data (Int.of_float x) in
-    let filename = test_name ^ "/SA_avg.png" in
+    let filename = test_name ^ "/SA_avg.svg" in
 let out = Plot.create ~m:3 ~n:2 filename in
     Plot.subplot out 0 0;
     Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
@@ -351,7 +352,7 @@ let out = Plot.create ~m:3 ~n:2 filename in
 
 let print_rs_avg () =
     let result data x = List.nth_exn data (Int.of_float x) in
-    let out_file = test_name ^ "/RS_avg.png" in
+    let out_file = test_name ^ "/RS_avg." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.subplot out 0 0;
     Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
@@ -397,7 +398,7 @@ let print_comparison () =
     |> Float.min (Float.of_int (List.length data1))
     |> Float.(+) (-1.) in
     let result data x = List.nth_exn data (Int.of_float x)  in
-    let out_file = test_name ^ "/Comparison.png" in
+    let out_file = test_name ^ "/Comparison." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.subplot out 0 0;
     Plot.set_title out "Comparison RS vs SA 1st DeJong function, d = 5";
@@ -480,7 +481,7 @@ let print_sa () =
       let index_2 = Int.of_float x  in
       let res = List.nth_exn data index in
       List.nth_exn (List.nth_exn res index_2) 1 in
-      let out_file = test_name ^ "/SA.png" in
+      let out_file = test_name ^ "/SA." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.subplot out 0 0;
     Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
@@ -526,7 +527,7 @@ let print_rs () =
       let index_2 = Int.of_float x in
       let res = List.nth_exn data index in
       List.nth_exn (List.nth_exn res index_2) 1 in
-      let out_file = test_name ^ "/RS.png" in
+      let out_file = test_name ^ "/RS." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.subplot out 0 0;
     Plot.set_title out "Random search 1st DeJong function with 5 dim. ";
