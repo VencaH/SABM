@@ -2,7 +2,7 @@
   description = "A flake demonstrating how to build OCaml projects with Dune";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
+      nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.05";
     flake-utils.url = "github:numtide/flake-utils";
     nix-filter.url = "github:numtide/nix-filter";
   };
@@ -26,7 +26,7 @@
             url = "https://github.com/hcarty/ocaml-plplot/releases/download/5.12.0/plplot-5.12.0.tbz";
             sha256 = "fHhsMWJXvy+HBzxEff26xZhOZULzepYmiutFSBUrzCw=";
           };
-          buildInputs = [ cplplot ocamlPackages.findlib ocamlPackages.dune-configurator ];
+          buildInputs = [ cplplot ocamlPackages.findlib ocamlPackages.dune-configurator pkgs.cairo ];
           nativeBuildInputs = [ pkgs.pkg-config  ];
 
           preConfigure = ''
@@ -34,32 +34,37 @@
               echo "Configure directory exists, moving it aside."
               mv ./configure ./_configure
             fi
-            # export PKG_CONFIG_PATH="${legacyPackages.plplot}/lib/pkgconfig"
-            # export C_INCLUDE_PATH="${legacyPackages.plplot}/include"
-            # export LIBRARY_PATH="${legacyPackages.plplot}/lib"
-            # export LD_LIBRARY_PATH="${legacyPackages.plplot}/lib"
-            # echo $PKG_CONFIG_PATH
           '';
 
           preBuild = ''
             if [ -d ./_configure ]; then
               echo "Returning back Configure directory."
               mv ./_configure ./configure
-            # ls "${legacyPackages.plplot}/lib/pkgconfig"
-            # ls "${legacyPackages.plplot}/include"
-            # ls "${legacyPackages.plplot}/lib"
             fi
           '';
           duneConfigFile = "dune-project";
         };
 
         # Define owl-plplot package
+        # owl-plplot = ocamlPackages.buildDunePackage rec {
+        #   pname = "owl-plplot";
+        #   version = "1.0.2";
+        #   src = legacyPackages.fetchurl {
+        #     url = "https://github.com/owlbarn/owl/releases/download/1.0.2/owl-1.0.2.tbz";
+        #     sha256 = "ONIQzmwcLwljH9WZUUMOTzZLWuA2xx7RsyzlWbKikmM=";
+        #   };
+        #   buildInputs = [ ocamlPackages.findlib  ocamlPackages.owl plplot ];
+        #   nativeBuildInputs = [ pkgs.pkg-config  ];
+        #   duneConfigFile = "dune-project";
+        # };
         owl-plplot = ocamlPackages.buildDunePackage rec {
           pname = "owl-plplot";
-          version = "1.0.2";
-          src = legacyPackages.fetchurl {
-            url = "https://github.com/owlbarn/owl/releases/download/1.0.2/owl-1.0.2.tbz";
-            sha256 = "ONIQzmwcLwljH9WZUUMOTzZLWuA2xx7RsyzlWbKikmM=";
+          version = "1.1.0";
+          src = legacyPackages.fetchFromGitHub {
+            owner = "owlbarn";
+            repo = "owl-plplot";
+            rev = "ebc73c0";
+            sha1= "sha1-T6XyfYI6OETBsJqyP2TkwKjDmy0=";
           };
           buildInputs = [ ocamlPackages.findlib  ocamlPackages.owl plplot ];
           nativeBuildInputs = [ pkgs.pkg-config  ];
@@ -181,6 +186,7 @@
         devShells = {
           default = legacyPackages.mkShell {
             packages = [
+              pkgs.cairo
               legacyPackages.nixpkgs-fmt
               legacyPackages.ocamlformat
               legacyPackages.fswatch

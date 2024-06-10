@@ -2,7 +2,7 @@ open Base
 open Owl_plplot
 
 let () = Random.self_init ()
-let graph_ftype = "png"
+let graph_ftype = "svg"
 
 module type TestSettings = sig
     val test_name: string
@@ -312,6 +312,7 @@ let print_sa_avg ()=
     let result data x = List.nth_exn data (Int.of_float x) in
     let filename = test_name ^ "/SA_avg.svg" in
 let out = Plot.create ~m:3 ~n:2 filename in
+    Plot.set_pen_size out 1.;
     Plot.subplot out 0 0;
     Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
     Plot.set_xlabel out "iteration";
@@ -354,6 +355,7 @@ let print_rs_avg () =
     let result data x = List.nth_exn data (Int.of_float x) in
     let out_file = test_name ^ "/RS_avg." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
+    Plot.set_pen_size out 1.;
     Plot.subplot out 0 0;
     Plot.set_title out "Random search 1st DeJong function with 5 dimensions ";
     Plot.set_xlabel out "iteration";
@@ -400,6 +402,7 @@ let print_comparison () =
     let result data x = List.nth_exn data (Int.of_float x)  in
     let out_file = test_name ^ "/Comparison." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
+    Plot.set_pen_size out 1.;
     Plot.subplot out 0 0;
     Plot.set_title out "Comparison RS vs SA 1st DeJong function, d = 5";
     Plot.set_xlabel out "iteration";
@@ -483,6 +486,7 @@ let print_sa () =
       List.nth_exn (List.nth_exn res index_2) 1 in
       let out_file = test_name ^ "/SA." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
+    Plot.set_pen_size out 1.;
     Plot.subplot out 0 0;
     Plot.set_title out "SA 1st DeJong function with 5 dimensions ";
     Plot.set_xlabel out "iteration";
@@ -529,6 +533,7 @@ let print_rs () =
       List.nth_exn (List.nth_exn res index_2) 1 in
       let out_file = test_name ^ "/RS." ^ graph_ftype in
 let out = Plot.create ~m:3 ~n:2 out_file in
+    Plot.set_pen_size out 1.;
     Plot.subplot out 0 0;
     Plot.set_title out "Random search 1st DeJong function with 5 dim. ";
     Plot.set_xlabel out "iteration";
