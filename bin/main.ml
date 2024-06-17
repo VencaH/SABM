@@ -366,6 +366,7 @@ module CreateTests (Inputs : TestSettings) : TestModule = struct
     let no_iter data = Float.of_int (List.length data) -. 1. in
     let result data x = List.nth_exn data (Int.of_float x) in
     let filename = test_name ^ "/SA_avg.svg" in
+    Plot.set_pen_size out 1.;
     let out = Plot.create ~m:3 ~n:2 filename in
     Plot.subplot out 0 0 ;
     Plot.set_title out "SA 1st DeJong function with 5 dimensions " ;
@@ -408,6 +409,7 @@ module CreateTests (Inputs : TestSettings) : TestModule = struct
   let print_rs_avg () =
     let result data x = List.nth_exn data (Int.of_float x) in
     let out_file = test_name ^ "/RS_avg." ^ graph_ftype in
+    Plot.set_pen_size out 1.;
     let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.subplot out 0 0 ;
     Plot.set_title out "Random search 1st DeJong function with 5 dimensions " ;
@@ -455,6 +457,7 @@ module CreateTests (Inputs : TestSettings) : TestModule = struct
     in
     let result data x = List.nth_exn data (Int.of_float x) in
     let out_file = test_name ^ "/Comparison." ^ graph_ftype in
+    Plot.set_pen_size out 1.;
     let out = Plot.create ~m:3 ~n:2 out_file in
     Plot.subplot out 0 0 ;
     Plot.set_title out "Comparison RS vs SA 1st DeJong function, d = 5" ;
@@ -559,6 +562,7 @@ let () =
       let index = Int.of_float i in
       let index_2 = Int.of_float x in
       let res = List.nth_exn data index in
+    Plot.set_pen_size out 1.;
       List.nth_exn (List.nth_exn res index_2) 1
     in
     let out_file = test_name ^ "/SA." ^ graph_ftype in
@@ -636,6 +640,7 @@ let () =
       let index = Int.of_float i in
       let index_2 = Int.of_float x in
       let res = List.nth_exn data index in
+    Plot.set_pen_size out 1.;
       List.nth_exn (List.nth_exn res index_2) 1
     in
     let out_file = test_name ^ "/RS." ^ graph_ftype in
