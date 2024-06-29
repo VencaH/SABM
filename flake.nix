@@ -93,28 +93,31 @@
       in
       {
         packages = {
-          default = self.packages.${system}.hello;
+          default = self.packages.${system}.SABM;
 
-          hello = ocamlPackages.buildDunePackage {
-            pname = "hello";
+          SABM = ocamlPackages.buildDunePackage {
+            pname = "SABM";
             version = "0.1.0";
             duneVersion = "3";
             src = sources.ocaml;
 
             buildInputs = [
+              ocamlPackages.base
               ocamlPackages.owl
+              owl-plplot
+              plplot
             ];
 
             strictDeps = true;
 
             preBuild = ''
-              dune build hello.opam
+              dune build SABM.opam
             '';
           };
         };
 
         checks = {
-          hello =
+          SABM =
             let
               patchDuneCommand =
                 let
@@ -125,7 +128,7 @@
                   (lib.lists.map (subcmd: "dune ${subcmd} --display=short") subcmds);
             in
 
-            self.packages.${system}.hello.overrideAttrs
+            self.packages.${system}.SABM.overrideAttrs
               (oldAttrs: {
                 name = "check-${oldAttrs.name}";
                 doCheck = true;
@@ -201,7 +204,7 @@
             ];
 
             inputsFrom = [
-              self.packages.${system}.hello
+              self.packages.${system}.SABM
             ];
           };
         };
